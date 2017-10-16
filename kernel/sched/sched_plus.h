@@ -61,7 +61,6 @@ task_prefer_match_on_cpu(struct task_struct *p, int src_cpu, int target_cpu);
 #define HEAVY_TASK_NUM  4
 
 extern void task_rotate_work_init(void);
-extern void check_for_migration(struct rq *rq, struct task_struct *p);
 extern void task_check_for_rotation(struct rq *rq);
 extern void set_sched_rotation_enable(bool enable);
 
@@ -70,11 +69,6 @@ static inline int is_reserved(int cpu)
 	struct rq *rq = cpu_rq(cpu);
 
 	return (rq->active_balance != 0);
-}
-
-static inline bool is_max_capacity_cpu(int cpu)
-{
-	return capacity_orig_of(cpu) == SCHED_CAPACITY_SCALE;
 }
 
 int select_task_prefer_cpu(struct task_struct *p, int new_cpu);

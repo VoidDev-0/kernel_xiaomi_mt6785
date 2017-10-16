@@ -116,15 +116,6 @@ enum SCHED_LB_TYPE {
 	SCHED_UNKNOWN_LB
 };
 
-#ifdef CONFIG_MTK_SCHED_BOOST
-extern bool sched_boost(void);
-#else
-static inline bool sched_boost(void)
-{
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_MTK_SCHED_INTEROP
 extern bool is_rt_throttle(int cpu);
 #endif
