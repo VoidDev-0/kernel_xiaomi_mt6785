@@ -6916,16 +6916,20 @@ boosted_cpu_util(int cpu)
 static inline unsigned long
 boosted_task_util(struct task_struct *task)
 {
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+	unsigned long util = task_util_est(task);
+	unsigned long util_min = uclamp_eff_value(task, UCLAMP_MIN);
+	unsigned long util_max = uclamp_eff_value(task, UCLAMP_MAX);
+
+	return clamp(util, util_min, util_max);
+#else
 	unsigned long util = task_util_est(task);
 	long margin = schedtune_task_margin(task);
 
 	trace_sched_boost_task(task, util, margin);
 
-	/* only boosted for heavy task */
-	if (util >= stune_task_threshold)
-		return util + margin;
-	else
-		return util;
+	return util + margin;
+#endif
 }
 
 void get_task_util(struct task_struct *p, unsigned long *util,
@@ -7560,6 +7564,11 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 
 			if(cpu_rq(i)->rt.rt_nr_running)
 				continue;
+
+			/* Skip CPUs which do not fit task requirements */
+			if (capacity_of(i) < boosted_task_util(p))
+				continue;
+
 			/*
 			 * p's blocked utilization is still accounted for on prev_cpu
 			 * so prev_cpu will receive a negative bias due to the double
