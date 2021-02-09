@@ -193,8 +193,23 @@ unsigned int sysctl_sched_cfs_bandwidth_slice		= 5000UL;
  */
 unsigned int capacity_margin				= 1280;
 
-unsigned int sysctl_sched_capacity_margin_up = 1078; /* ~5% margin */
-unsigned int sysctl_sched_capacity_margin_down = 1205; /* ~15% margin */
+/* Migration margins */
+unsigned int sysctl_sched_capacity_margin_up[MAX_MARGIN_LEVELS] = {
+			[0 ... MAX_MARGIN_LEVELS-1] = 1078}; /* ~5% margin */
+unsigned int sysctl_sched_capacity_margin_down[MAX_MARGIN_LEVELS] = {
+			[0 ... MAX_MARGIN_LEVELS-1] = 1205}; /* ~15% margin */
+unsigned int sched_capacity_margin_up[NR_CPUS] = {
+			[0 ... NR_CPUS-1] = 1078}; /* ~5% margin */
+unsigned int sched_capacity_margin_down[NR_CPUS] = {
+			[0 ... NR_CPUS-1] = 1205}; /* ~15% margin */
+unsigned int sysctl_sched_capacity_margin_up_boosted[MAX_MARGIN_LEVELS] = {
+			[0 ... MAX_MARGIN_LEVELS-1] = 4096}; /* ~75% margin */
+unsigned int sysctl_sched_capacity_margin_down_boosted[MAX_MARGIN_LEVELS] = {
+			[0 ... MAX_MARGIN_LEVELS-1] = 4096}; /* ~75% margin */
+unsigned int sched_capacity_margin_up_boosted[NR_CPUS] = {
+			[0 ... NR_CPUS-1] = 4096}; /* ~75% margin */
+unsigned int sched_capacity_margin_down_boosted[NR_CPUS] = {
+			[0 ... NR_CPUS-1] = 4096}; /* ~75% margin */
 
 static inline void update_load_add(struct load_weight *lw, unsigned long inc)
 {
@@ -3747,9 +3762,8 @@ static inline unsigned long cfs_rq_load_avg(struct cfs_rq *cfs_rq)
 
 static int idle_balance(struct rq *this_rq, struct rq_flags *rf);
 
-static inline int task_fits_capacity(struct task_struct *p,
-					long capacity,
-					int cpu);
+static inline bool task_fits_capacity(struct task_struct *p, long capacity,
+								int cpu);
 
 static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 {
@@ -5279,7 +5293,6 @@ static inline void hrtick_update(struct rq *rq)
 #endif
 
 #ifdef CONFIG_SMP
-static bool cpu_overutilized(int cpu);
 
 static bool sd_overutilized(struct sched_domain *sd)
 {
@@ -5338,6 +5351,12 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
 	int task_new = !(flags & ENQUEUE_WAKEUP);
+	bool prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
+#ifdef CONFIG_SCHED_TUNE
+				(schedtune_prefer_idle(p) > 0) : 0;
+#elif  CONFIG_UCLAMP_TASK
+				(uclamp_latency_sensitive(p) > 0) : 0;
+#endif
 
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
@@ -5370,7 +5389,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	 * utilization updates, so do it here explicitly with the IOWAIT flag
 	 * passed.
 	 */
-	if (p->in_iowait)
+	if (p->in_iowait && prefer_idle)
 		cpufreq_update_util(rq, SCHED_CPUFREQ_IOWAIT);
 
 	for_each_sched_entity(se) {
@@ -5411,7 +5430,8 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		inc_nr_heavy_running(2, p, 1, false);
 #endif
 		inc_rq_walt_stats(rq, p);
-		if (!task_new)
+		if (!task_new &&
+			!(prefer_idle && rq->nr_running == 1))
 			update_overutilized_status(rq);
 	}
 
@@ -5879,7 +5899,7 @@ bias_to_waker_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
 {
 	bool base_test = cpumask_test_cpu(cpu, &p->cpus_allowed) &&
 			cpu_active(cpu) && task_fits_max(p, cpu) &&
-			cpu_rq(cpu)->nr_running == 1;
+			!__cpu_overutilized(cpu, task_util(p));
 	bool rtg_test = rtg_target && cpumask_test_cpu(cpu, rtg_target);
 
 	return base_test && (!rtg_target || rtg_test);
@@ -7433,17 +7453,20 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 	return select_idle_sibling_cstate_aware(p, prev, target);
 }
 
-static inline int task_fits_capacity(struct task_struct *p,
+static inline bool task_fits_capacity(struct task_struct *p,
 					long capacity,
 					int cpu)
 {
 	unsigned int margin;
+
 	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
-		margin = sysctl_sched_capacity_margin_down;
+		margin = sched_capacity_margin_down[task_cpu(p)];
 	else
-		margin = sysctl_sched_capacity_margin_up;
+		margin = sched_capacity_margin_up[task_cpu(p)];
+
 	return capacity * 1024 > boosted_task_util(p) * margin;
 }
+
 
 static inline bool task_fits_max(struct task_struct *p, int cpu)
 {
@@ -7453,8 +7476,13 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	if (capacity == max_capacity)
 		return true;
 
-	if (sched_boost_policy() == SCHED_BOOST_ON_BIG &&
-					task_sched_boost(p))
+	if ((sched_boost_policy() == SCHED_BOOST_ON_BIG ||
+#ifdef CONFIG_SCHED_TUNE
+			schedtune_task_boost(p) > 0) &&
+#elif  CONFIG_UCLAMP_TASK
+			uclamp_boosted(p) > 0) &&
+#endif
+			is_min_capacity_cpu(cpu))
 		return false;
 
 	return task_fits_capacity(p, capacity, cpu);
@@ -7866,9 +7894,15 @@ static int wake_cap(struct task_struct *p, int cpu, int prev_cpu)
 	return task_fits_capacity(p, min_cap, cpu);
 }
 
-static bool cpu_overutilized(int cpu)
+bool __cpu_overutilized(int cpu, int delta)
 {
-	return (capacity_of(cpu) * 1024) < (cpu_util(cpu) * capacity_margin);
+	return (capacity_orig_of(cpu) * 1024) <
+		((cpu_util(cpu) + delta) * sched_capacity_margin_up[cpu]);
+}
+
+bool cpu_overutilized(int cpu)
+{
+	return __cpu_overutilized(cpu, 0);
 }
 
 DEFINE_PER_CPU(struct energy_env, eenv_cache);
@@ -8009,6 +8043,11 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int target_cpu = -1;
 	struct energy_env *eenv;
 	struct cpumask *rtg_target = NULL;
+#ifdef CONFIG_SCHED_TUNE
+	int boosted = (schedtune_task_boost(p) > 0);
+#elif  CONFIG_UCLAMP_TASK
+	int boosted = (uclamp_boosted(p) > 0);
+#endif
 
 	if (rtg_target && !task_fits_max(p, cpumask_first(rtg_target)))
 		rtg_target = NULL;
@@ -8058,7 +8097,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 				break;
 		}
 	} else {
-		int boosted = (schedtune_task_boost(p) > 0);
 		int prefer_idle;
 
 		/*
@@ -8067,8 +8105,11 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		 * all if(prefer_idle) blocks.
 		 */
 		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
+#ifdef CONFIG_SCHED_TUNE
 				(schedtune_prefer_idle(p) > 0) : 0;
-
+#elif  CONFIG_UCLAMP_TASK
+				(uclamp_latency_sensitive(p) > 0) : 0;
+#endif
 		eenv->max_cpu_count = EAS_CPU_BKP + 1;
 
 		/* Find a cpu with sufficient capacity */
@@ -8186,7 +8227,12 @@ static inline int wake_energy(struct task_struct *p, int prev_cpu,
 		 * Force prefer-idle tasks into the slow path, this may not happen
 		 * if none of the sd flags matched.
 		 */
-		if (schedtune_prefer_idle(p) > 0 && !sync)
+#ifdef CONFIG_SCHED_TUNE
+		if (schedtune_prefer_idle(p) > 0
+#elif  CONFIG_UCLAMP_TASK
+		if (uclamp_latency_sensitive(p) > 0
+#endif
+				&& !sync)
 			return false;
 	}
 	return true;

@@ -1825,6 +1825,9 @@ extern void nohz_balance_clear_nohz_mask(int cpu);
 
 extern void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask);
 
+bool __cpu_overutilized(int cpu, int delta);
+bool cpu_overutilized(int cpu);
+
 #endif
 
 #ifdef CONFIG_CPU_IDLE
