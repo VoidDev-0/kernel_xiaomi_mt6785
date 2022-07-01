@@ -43,6 +43,17 @@ config MICROTRUST_TZ_DRIVER
 	  Say Y if you would like to enable the driver.
 	  If unsure, say Y.
 
+config MICROTRUST_TZ_DRIVER_MTK_BOOTPROF
+	bool "Enable MTK bootprof"
+	depends on MICROTRUST_TZ_DRIVER
+	default y
+	---help---
+    Enables the support of Mediatek bootprof feature in Microtrust
+    tz_driver. This feature is for tracking boot progress by
+    notifying mtk bootprof driver in each check point.
+    Say Y if you would like to enable this feature.
+    If unsure, say Y.
+
 config MICROTRUST_DYNAMIC_CORE
 	tristate "Microtrust TEEI Dynamic Core"
 	depends on MICROTRUST_TEE_SUPPORT
