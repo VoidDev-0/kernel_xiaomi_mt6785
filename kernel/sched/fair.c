@@ -12043,7 +12043,6 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 {
 	int new_cpu;
 	int cpu = task_cpu(p);
-	int force = 0;
 	int i, heavy_task = 0;
 	struct task_rotate_reset_uclamp_work *wr = NULL;
 

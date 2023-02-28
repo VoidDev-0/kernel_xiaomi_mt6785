@@ -1795,7 +1795,7 @@ CONFIG_MTK_CHIP=y
 #
 # MTK load balance and schedule enhancement
 #
-CONFIG_MTK_IDLE_BALANCE_ENHANCEMENT=y
+# CONFIG_MTK_IDLE_BALANCE_ENHANCEMENT is not set
 # CONFIG_MTK_SCHED_INTEROP is not set
 # CONFIG_MTK_SCHED_TRACE is not set
 

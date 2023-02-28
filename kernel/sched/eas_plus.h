@@ -36,8 +36,8 @@ extern int find_best_idle_cpu(struct task_struct *p, bool prefer_idle);
 
 static int start_cpu(struct task_struct *p, bool prefer_idle,
 				bool boosted);
-static int
-migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target);
+// static int
+// migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target);
 
 #ifdef CONFIG_UCLAMP_TASK
 static __always_inline
@@ -156,7 +156,7 @@ inline int hinted_cpu_prefer(int task_prefer);
 int cpu_prefer(struct task_struct *p);
 extern unsigned int hmp_cpu_is_fastest(int cpu);
 
-static int check_freq_turning(void);
+// static int check_freq_turning(void);
 struct rq *__migrate_task(struct rq *rq, struct rq_flags *rf,
 				struct task_struct *p, int dest_cpu);
 
