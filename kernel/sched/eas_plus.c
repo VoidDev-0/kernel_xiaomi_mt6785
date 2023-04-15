@@ -1752,9 +1752,7 @@ struct task_rotate_work {
 };
 
 static DEFINE_PER_CPU(struct task_rotate_work, task_rotate_works);
-struct task_rotate_reset_uclamp_work task_rotate_reset_uclamp_works;
 unsigned int sysctl_sched_rotation_enable;
-bool set_uclamp;
 
 void set_sched_rotation_enable(bool enable)
 {
@@ -1778,40 +1776,14 @@ static void task_rotate_work_func(struct work_struct *work)
 {
 	struct task_rotate_work *wr = container_of(work,
 				struct task_rotate_work, w);
-	int ret = -1;
-	struct rq *src_rq, *dst_rq;
 
-	ret = migrate_swap(wr->src_task, wr->dst_task);
-
-	if (ret == 0) {
-		update_eas_uclamp_min(EAS_UCLAMP_KIR_BIG_TASK, CGROUP_TA,
-				scale_to_percent(SCHED_CAPACITY_SCALE));
-		set_uclamp = true;
-		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
-						wr->src_task->pid,
-						wr->dst_task->pid,
-						true, set_uclamp);
-	}
+	migrate_swap(wr->src_task, wr->dst_task);
 
 	put_task_struct(wr->src_task);
 	put_task_struct(wr->dst_task);
 
-	src_rq = cpu_rq(wr->src_cpu);
-	dst_rq = cpu_rq(wr->dst_cpu);
-
-	local_irq_disable();
-	double_rq_lock(src_rq, dst_rq);
-	src_rq->active_balance = 0;
-	dst_rq->active_balance = 0;
-	double_rq_unlock(src_rq, dst_rq);
-	local_irq_enable();
-}
-
-static void task_rotate_reset_uclamp_work_func(struct work_struct *work)
-{
-	update_eas_uclamp_min(EAS_UCLAMP_KIR_BIG_TASK, CGROUP_TA, 0);
-	set_uclamp = false;
-	trace_sched_big_task_rotation_reset(set_uclamp);
+	clear_reserved(wr->src_cpu);
+	clear_reserved(wr->dst_cpu);
 }
 
 void task_rotate_work_init(void)
@@ -1823,9 +1795,6 @@ void task_rotate_work_init(void)
 
 		INIT_WORK(&wr->w, task_rotate_work_func);
 	}
-
-	INIT_WORK(&task_rotate_reset_uclamp_works.w,
-			task_rotate_reset_uclamp_work_func);
 }
 
 void task_check_for_rotation(struct rq *src_rq)
@@ -1943,8 +1912,7 @@ void task_check_for_rotation(struct rq *src_rq)
 
 	if (force) {
 		queue_work_on(src_cpu, system_highpri_wq, &wr->w);
-		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
-					wr->src_task->pid, wr->dst_task->pid,
-					false, set_uclamp);
+		trace_sched_big_task_rotation(src_cpu, dst_cpu,
+					src_rq->curr->pid, dst_rq->curr->pid);
 	}
 }

@@ -741,18 +741,15 @@ TRACE_EVENT(sched_select_task_rq,
  */
 TRACE_EVENT(sched_big_task_rotation,
 
-	TP_PROTO(int src_cpu, int dst_cpu, int src_pid, int dst_pid,
-		int fin, int set_uclamp),
+	TP_PROTO(int src_cpu, int dst_cpu, int src_pid, int dst_pid),
 
-	TP_ARGS(src_cpu, dst_cpu, src_pid, dst_pid, fin, set_uclamp),
+	TP_ARGS(src_cpu, dst_cpu, src_pid, dst_pid),
 
 	TP_STRUCT__entry(
 		__field(int, src_cpu)
 		__field(int, dst_cpu)
 		__field(int, src_pid)
 		__field(int, dst_pid)
-		__field(int, fin)
-		__field(int, set_uclamp)
 	),
 
 	TP_fast_assign(
@@ -760,32 +757,11 @@ TRACE_EVENT(sched_big_task_rotation,
 		__entry->dst_cpu	= dst_cpu;
 		__entry->src_pid	= src_pid;
 		__entry->dst_pid	= dst_pid;
-		__entry->fin		= fin;
-		__entry->set_uclamp	= set_uclamp;
 	),
 
-	TP_printk("src_cpu=%d dst_cpu=%d src_pid=%d dst_pid=%d fin=%d set=%d",
+	TP_printk("src_cpu=%d dst_cpu=%d src_pid=%d dst_pid=%d",
 		__entry->src_cpu, __entry->dst_cpu,
-		__entry->src_pid, __entry->dst_pid,
-		__entry->fin, __entry->set_uclamp)
-);
-
-TRACE_EVENT(sched_big_task_rotation_reset,
-
-	TP_PROTO(int set_uclamp),
-
-	TP_ARGS(set_uclamp),
-
-	TP_STRUCT__entry(
-		__field(int, set_uclamp)
-	),
-
-	TP_fast_assign(
-		__entry->set_uclamp	= set_uclamp;
-	),
-
-	TP_printk("set_uclamp=%d",
-		__entry->set_uclamp)
+		__entry->src_pid, __entry->dst_pid)
 );
 
 #ifdef CONFIG_MTK_TASK_TURBO
