@@ -7506,6 +7506,7 @@ static int start_cpu(struct task_struct *p, bool prefer_idle,
 		bool boosted)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	bool turning = false;
 
 	if (rd->min_cap_orig_cpu < 0)
 		return -1;
@@ -7513,7 +7514,23 @@ static int start_cpu(struct task_struct *p, bool prefer_idle,
 	if (boosted && (task_util(p) >= stune_task_threshold))
 		return boosted ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
 
-	return rd->min_cap_orig_cpu;
+
+	if (check_freq_turning()) {
+		int max_cap_cpu;
+		int total_nr_running, cpu_count;
+
+		max_cap_cpu = rd->max_cap_orig_cpu;
+		if (collect_cluster_info(max_cap_cpu, &total_nr_running,
+							&cpu_count)) {
+
+			if (total_nr_running < cpu_count)
+				turning = true;
+		}
+	}
+
+	*t = turning;
+
+	return turning ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
 }
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
@@ -7599,6 +7616,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * than the one required to boost the task.
 			 */
 			new_util = max(min_util, new_util);
+			new_util = max(task_clamped_util, new_util);
 			if (new_util > capacity)
 				continue;
 
@@ -7731,6 +7749,28 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				best_active_cpu = i;
 				continue;
 			}
+
+			/*
+			 * Enforce EAS mode
+			 *
+			 * For non latency sensitive tasks, skip CPUs that
+			 * will be overutilized by moving the task there.
+			 *
+			 * The goal here is to remain in EAS mode as long as
+			 * possible at least for !prefer_idle tasks.
+			 */
+			/*
+			if ((new_util * capacity_margin) >
+			    (capacity * SCHED_CAPACITY_SCALE))
+				continue;
+			*/
+
+			/*
+			 * Favor CPUs with smaller capacity for non latency
+			 * sensitive tasks.
+			 */
+			if (capacity_orig > target_capacity)
+				continue;
 
 			/*
 			 * Case B) Non latency sensitive tasks on IDLE CPUs.

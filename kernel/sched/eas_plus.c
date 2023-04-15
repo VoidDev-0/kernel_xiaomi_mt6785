@@ -429,7 +429,7 @@ static struct sched_entity
 {
 	int num_tasks = idle_prefer_max_tasks;
 	const struct cpumask *hmp_target_mask = NULL;
-	int src_capacity;
+	int target_capacity, src_capacity;
 	unsigned int util_min;
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se;
@@ -444,6 +444,7 @@ static struct sched_entity
 	 *	b. task_capacity > belonged CPU
 	 */
 	src_capacity = capacity_orig_of(cpu);
+	target_capacity = capacity_orig_of(target_cpu);
 	cfs_rq = &cpu_rq(cpu)->cfs;
 	se = __pick_first_entity(cfs_rq);
 	while (num_tasks && se) {
@@ -464,7 +465,7 @@ static struct sched_entity
 				return se;
 
 			if (schedtune_prefer_idle(task_of(se)) &&
-					cpu_rq(cpu)->nr_running > 1) {
+					target_capacity >= util_min) {
 				if (!check_min_cap)
 					return se;
 
@@ -810,24 +811,17 @@ static unsigned int aggressive_idle_pull(int this_cpu)
 	/*
 	 * aggressive idle balance for min_cap/idle_prefer
 	 */
-	if (hmp_cpu_is_slowest(this_cpu)) {
+	if (hmp_cpu_is_slowest(this_cpu))
 		hmp_slowest_idle_prefer_pull(this_cpu, &p, &target);
-		if (p) {
-			trace_sched_hmp_migrate(p, this_cpu, 0x10);
-			moved = migrate_runnable_task(p, this_cpu, target);
-			if (moved)
-				goto done;
-		}
-	} else {
+	else
 		hmp_fastest_idle_prefer_pull(this_cpu, &p, &target);
-		if (p) {
-			trace_sched_hmp_migrate(p, this_cpu, 0x10);
-			moved = migrate_runnable_task(p, this_cpu, target);
-			if (moved)
-				goto done;
 
-			moved = migrate_running_task(this_cpu, p, target);
-		}
+	if (p) {
+		moved = migrate_runnable_task(p, this_cpu, target);
+		if (moved)
+			goto done;
+
+		moved = migrate_running_task(this_cpu, p, target);
 	}
 
 done:
