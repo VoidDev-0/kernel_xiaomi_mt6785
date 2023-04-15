@@ -6927,16 +6927,14 @@ boosted_task_util(struct task_struct *task)
 {
 	unsigned long util = task_util_est(task);
 	long margin = schedtune_task_margin(task);
-	unsigned int util_min = uclamp_task_effective_util(task, UCLAMP_MIN);
 
-	trace_sched_boost_task(task, util, margin, util_min);
+	trace_sched_boost_task(task, util, margin);
 
 	/* only boosted for heavy task */
-	if (util >= stune_task_threshold) {
-		return util + margin > util_min ? util + margin : util_min;
-	} else {
-		return util > util_min ? util : util_min;
-	}
+	if (util >= stune_task_threshold)
+		return util + margin;
+	else
+		return util;
 }
 
 void get_task_util(struct task_struct *p, unsigned long *util,

@@ -496,24 +496,6 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
 }
 #endif
 
-#ifdef CONFIG_UCLAMP_TASK
-/*
- * Provides /proc/PID/tasks/TID/util_min
- */
-static int proc_pid_util_min(struct seq_file *m, struct pid_namespace *ns,
-			      struct pid *pid, struct task_struct *task)
-{
-	unsigned int util_min, effective_util_min;
-
-	util_min = uclamp_task_util(task, UCLAMP_MIN);
-	effective_util_min = uclamp_task_effective_util(task, UCLAMP_MIN);
-
-	seq_printf(m, "%u %u\n", util_min, effective_util_min);
-
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_LATENCYTOP
 static int lstats_show_proc(struct seq_file *m, void *v)
 {
@@ -3500,9 +3482,6 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_SCHED_INFO
 	ONE("schedstat", S_IRUGO, proc_pid_schedstat),
-#endif
-#ifdef CONFIG_UCLAMP_TASK
-	ONE("util_min",  0444, proc_pid_util_min),
 #endif
 #ifdef CONFIG_TASK_DELAY_ACCT
 	REG("delay",      S_IRUGO, proc_delay_file_operations),
