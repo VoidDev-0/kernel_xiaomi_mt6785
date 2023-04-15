@@ -1719,38 +1719,31 @@ int set_task_util_min(pid_t pid, unsigned int util_min)
 {
 	unsigned int upper_bound;
 	struct task_struct *p;
-	int ret = 0;
 
 	if (!opp_capacity_tbl_ready)
 		init_opp_capacity_tbl();
 
 	util_min = find_fit_capacity(util_min);
 
-	mutex_lock(&uclamp_mutex);
 	rcu_read_lock();
 	p = find_process_by_pid(pid);
+	rcu_read_unlock();
 
-	if (!p) {
-		ret = -ESRCH;
-		goto out;
-	}
+	if (!p)
+		return -ESRCH;
 
 	upper_bound = p->uclamp[UCLAMP_MAX].value;
 
-	if (util_min > upper_bound || util_min < 0) {
-		ret = -EINVAL;
-		goto out;
-	}
+	if (util_min > upper_bound || util_min < 0)
+		return -EINVAL;
 
+	mutex_lock(&uclamp_mutex);
 	p->uclamp[UCLAMP_MIN].user_defined = true;
 	uclamp_group_get(p, NULL, &p->uclamp[UCLAMP_MIN],
 			UCLAMP_MIN, util_min);
-
-out:
-	rcu_read_unlock();
 	mutex_unlock(&uclamp_mutex);
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(set_task_util_min);
 
