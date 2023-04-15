@@ -1278,17 +1278,10 @@ static void __init init_uclamp(void)
 	}
 }
 
-int set_task_uclamp(int ucalamp_id, int uclamp_value)
-{
-	uclamp_group_find(ucalamp_id, uclamp_value);
-	return 0;
-}
-
 #else /* CONFIG_UCLAMP_TASK */
 static inline void init_uclamp(void) { }
 static inline void uclamp_cpu_get(struct rq *rq, struct task_struct *p) { }
 static inline void uclamp_cpu_put(struct rq *rq, struct task_struct *p) { }
-int set_task_uclamp(int ucalamp_id, int uclamp_value) { return -ENOSPC; }
 #endif /* CONFIG_UCLAMP_TASK  */
 
 void set_capacity_margin(unsigned int margin)
