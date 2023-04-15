@@ -7522,12 +7522,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	unsigned long target_max_spare_cap = 0;
 	unsigned long target_util = ULONG_MAX;
 	unsigned long best_active_util = ULONG_MAX;
-	unsigned long max_capacity = cluster_max_capacity();
-	unsigned long min_cpu_util = ULONG_MAX;
-	unsigned long backup_idle_min_cpu_util = ULONG_MAX;
-	unsigned long backup_idle_min_cpu_cap = ULONG_MAX;
-	unsigned long backup_active_min_cpu_util = ULONG_MAX;
-	unsigned long min_target_capacity = ULONG_MAX;
 	int best_idle_cstate = INT_MAX;
 	struct sched_domain *sd;
 	struct sched_group *sg;
@@ -7595,7 +7589,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * than the one required to boost the task.
 			 */
 			new_util = max(min_util, new_util);
-			if (new_util > capacity_orig)
+			if (new_util > capacity)
 				continue;
 
 
@@ -8121,7 +8115,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
 	int target_cpu = -1;
 	struct energy_env *eenv;
-	unsigned int task_clamped_util;
 
 	if (sysctl_sched_sync_hint_enable && sync) {
 		if (cpumask_test_cpu(cpu, &p->cpus_allowed) &&
@@ -8190,10 +8183,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		/* Immediately return a found idle CPU for a prefer_idle task */
 		if (prefer_idle && target_cpu >= 0 && idle_cpu(target_cpu) &&
 			!cpu_isolated(target_cpu))
-			return target_cpu;
-
-		task_clamped_util = uclamp_task_effective_util(p, UCLAMP_MIN);
-		if (task_clamped_util > capacity_of(prev_cpu))
 			return target_cpu;
 
 		/* sched: no need energy calculation if the same domain */
