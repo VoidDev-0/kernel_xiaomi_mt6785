@@ -1781,9 +1781,6 @@ static void task_rotate_work_func(struct work_struct *work)
 
 	put_task_struct(wr->src_task);
 	put_task_struct(wr->dst_task);
-
-	clear_reserved(wr->src_cpu);
-	clear_reserved(wr->dst_cpu);
 }
 
 void task_rotate_work_init(void)
@@ -1805,7 +1802,6 @@ void task_check_for_rotation(struct rq *src_rq)
 	struct rq *dst_rq;
 	struct task_rotate_work *wr = NULL;
 	int heavy_task = 0;
-	int force = 0;
 
 	if (!sysctl_sched_rotation_enable)
 		return;
@@ -1905,14 +1901,8 @@ void task_check_for_rotation(struct rq *src_rq)
 
 			wr->src_cpu = src_rq->cpu;
 			wr->dst_cpu = dst_rq->cpu;
-			force = 1;
 		}
 	}
 	double_rq_unlock(src_rq, dst_rq);
 
-	if (force) {
-		queue_work_on(src_cpu, system_highpri_wq, &wr->w);
-		trace_sched_big_task_rotation(src_cpu, dst_cpu,
-					src_rq->curr->pid, dst_rq->curr->pid);
-	}
 }

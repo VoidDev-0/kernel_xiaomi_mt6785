@@ -683,18 +683,6 @@ static void fbt_set_task_policy(struct fpsgo_loading *fl,
 	if (fl->policy != policy && fl->prefer_type != FPSGO_PREFER_NONE)
 		fbt_set_task_policy(fl, fl->policy, FPSGO_PREFER_NONE);
 
-	switch (policy) {
-	case FPSGO_TPOLICY_PREFER:
-		fbt_set_cpu_prefer(fl->pid, prefer_type);
-		break;
-	case FPSGO_TPOLICY_AFFINITY:
-		fbt_set_affinity(fl->pid, prefer_type);
-		break;
-	case FPSGO_TPOLICY_NONE:
-	default:
-		break;
-	}
-
 	fl->prefer_type = prefer_type;
 	fl->policy = policy;
 	fpsgo_systrace_c_fbt_gm(fl->pid, 0, prefer_type, "prefer_type");
@@ -3010,10 +2998,6 @@ static void fbt_set_cap_limit(void)
 	limit_cap = 0;
 	limit_policy = FPSGO_LIMIT_NONE;
 
-	limit_ret = fbt_get_cluster_limit(&cluster, &limit_freq);
-	if (!limit_ret)
-		return;
-
 	if (cluster < 0 || cluster > (cluster_num - 1))
 		return;
 
@@ -3885,10 +3869,6 @@ int __init fbt_cpu_init(void)
 	fbt_down_throttle_enable = 1;
 	sync_flag = -1;
 	fbt_sync_flag_enable = 1;
-	def_capacity_margin = get_capacity_margin();
-	fbt_cap_margin_enable = 1;
-	boost_ta = fbt_get_default_boost_ta();
-	adjust_loading = fbt_get_default_adj_loading();
 
 	cluster_num = arch_get_nr_clusters();
 

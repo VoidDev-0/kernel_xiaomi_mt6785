@@ -39,10 +39,5 @@ int fbt_get_L_min_ceiling(void);
 void fbt_notify_CM_limit(int reach_limit);
 void fbt_reg_dram_request(int reg);
 void fbt_boost_dram(int boost);
-int fbt_get_default_boost_ta(void);
-int fbt_get_default_adj_loading(void);
-void fbt_set_cpu_prefer(int pid, unsigned int prefer_type);
-void fbt_set_affinity(pid_t pid, unsigned int prefer_type);
-int fbt_get_cluster_limit(int *cluster, int *freq);
 
 #endif
