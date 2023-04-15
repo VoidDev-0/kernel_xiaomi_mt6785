@@ -876,7 +876,7 @@ void schedtune_init_uclamp(void)
 		/* Init root ST's clamp group */
 		uc_se = &root_schedtune.uclamp[clamp_id];
 		uclamp_group_get(NULL, NULL, uc_se, clamp_id,
-				 uclamp_none(clamp_id));
+				 uclamp_none(UCLAMP_MAX));
 		uc_se->effective.group_id = uc_se->group_id;
 		uc_se->effective.value = uc_se->value;
 	}
