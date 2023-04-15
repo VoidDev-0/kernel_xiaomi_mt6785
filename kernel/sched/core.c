@@ -1553,11 +1553,8 @@ done:
 	uc_se->group_id = group_id;
 
 	/* Newly created TG don't have tasks assigned */
-	if (css) {
-		uc_se->effective.value = clamp_value;
-		uc_se->effective.group_id = group_id;
+	if (css)
 		uclamp_group_get_tg(css, clamp_id, group_id);
-	}
 
 	/* Update CPU's clamp group refcounts of RUNNABLE task */
 	if (p)
