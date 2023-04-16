@@ -7502,35 +7502,14 @@ static inline int task_fits_capacity(struct task_struct *p, long capacity)
 	return capacity * 1024 > boosted_task_util(p) * capacity_margin;
 }
 
-static int start_cpu(struct task_struct *p, bool prefer_idle,
-		bool boosted)
+static int start_cpu(struct task_struct *p, bool boosted)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
-	bool turning = false;
-
-	if (rd->min_cap_orig_cpu < 0)
-		return -1;
 
 	if (boosted && (task_util(p) >= stune_task_threshold))
-		return boosted ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
-
-
-	if (check_freq_turning()) {
-		int max_cap_cpu;
-		int total_nr_running, cpu_count;
-
-		max_cap_cpu = rd->max_cap_orig_cpu;
-		if (collect_cluster_info(max_cap_cpu, &total_nr_running,
-							&cpu_count)) {
-
-			if (total_nr_running < cpu_count)
-				turning = true;
-		}
-	}
-
-	*t = turning;
-
-	return turning ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
+		return rd->max_cap_orig_cpu;
+	else
+		return rd->min_cap_orig_cpu;
 }
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
@@ -7572,7 +7551,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 		target_capacity = 0;
 
 	/* Find start CPU based on boost value */
-	cpu = start_cpu(p, prefer_idle, boosted);
+	cpu = start_cpu(p, boosted);
 	if (cpu < 0)
 		return -1;
 
@@ -7616,9 +7595,9 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * than the one required to boost the task.
 			 */
 			new_util = max(min_util, new_util);
-			new_util = max(task_clamped_util, new_util);
-			if (new_util > capacity)
+			if (new_util > capacity_orig)
 				continue;
+
 
 			/*
 			 * Pre-compute the maximum possible capacity we expect

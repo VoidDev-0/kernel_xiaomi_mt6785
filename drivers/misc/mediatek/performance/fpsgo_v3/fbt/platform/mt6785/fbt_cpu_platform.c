@@ -86,9 +86,6 @@ void fbt_set_per_task_min_cap(int pid, unsigned int base_blc)
 	if (!pid)
 		return;
 
-#ifdef CONFIG_UCLAMP_TASK
-	ret = set_task_util_min_pct(pid, base_blc);
-#endif
 	if (ret != 0) {
 		fpsgo_systrace_c_fbt(pid, 0, ret, "uclamp fail");
 		fpsgo_systrace_c_fbt(pid, 0, 0, "uclamp fail");

@@ -494,9 +494,6 @@ int update_eas_uclamp_min(int kicker, int cgroup_idx, int value)
 		mutex_unlock(&boost_eas);
 		return -EIO;
 	}
-	if (debug_uclamp_min[cgroup_idx] == -1)
-		uclamp_min_pct_for_perf_idx(cgroup_idx,
-				cur_uclamp_min[cgroup_idx]);
 
 	if (strlen(msg) + strlen(msg1) < LOG_BUF_SIZE)
 		strncat(msg, msg1, strlen(msg1));
@@ -836,14 +833,6 @@ static ssize_t perfmgr_debug_uclamp_min_proc_write(
 
 	debug_uclamp_min[CGROUP_ROOT] = check_debug_uclamp_value(data);
 
-#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
-	if (debug_uclamp_min[CGROUP_ROOT] >= 0)
-		uclamp_min_pct_for_perf_idx(CGROUP_ROOT,
-			debug_uclamp_min[CGROUP_ROOT]);
-	else
-		uclamp_min_pct_for_perf_idx(CGROUP_ROOT,
-			cur_uclamp_min[CGROUP_ROOT]);
-#endif
 	return cnt;
 }
 
@@ -904,14 +893,6 @@ static ssize_t perfmgr_debug_fg_uclamp_min_proc_write(
 
 	debug_uclamp_min[CGROUP_FG] = check_debug_uclamp_value(data);
 
-#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
-	if (debug_uclamp_min[CGROUP_FG] >= 0)
-		uclamp_min_pct_for_perf_idx(CGROUP_FG,
-			debug_uclamp_min[CGROUP_FG]);
-	else
-		uclamp_min_pct_for_perf_idx(CGROUP_FG,
-			cur_uclamp_min[CGROUP_FG]);
-#endif
 	return cnt;
 }
 
@@ -972,14 +953,6 @@ static ssize_t perfmgr_debug_bg_uclamp_min_proc_write(
 
 	debug_uclamp_min[CGROUP_BG] = check_debug_uclamp_value(data);
 
-#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
-	if (debug_uclamp_min[CGROUP_BG] >= 0)
-		uclamp_min_pct_for_perf_idx(CGROUP_BG,
-			debug_uclamp_min[CGROUP_BG]);
-	else
-		uclamp_min_pct_for_perf_idx(CGROUP_BG,
-			cur_uclamp_min[CGROUP_BG]);
-#endif
 	return cnt;
 }
 
@@ -1040,14 +1013,6 @@ static ssize_t perfmgr_debug_ta_uclamp_min_proc_write(
 
 	debug_uclamp_min[CGROUP_TA] = check_debug_uclamp_value(data);
 
-#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
-	if (debug_uclamp_min[CGROUP_TA] >= 0)
-		uclamp_min_pct_for_perf_idx(CGROUP_TA,
-			debug_uclamp_min[CGROUP_TA]);
-	else
-		uclamp_min_pct_for_perf_idx(CGROUP_TA,
-			cur_uclamp_min[CGROUP_TA]);
-#endif
 	return cnt;
 }
 
