@@ -989,7 +989,6 @@ static inline void uclamp_group_put(int clamp_id, int group_id)
 
 /**
  * uclamp_group_get: increase the reference count for a clamp group
- * @p: the task which clamp value must be tracked
  * @clamp_id: the clamp index affected by the task
  * @next_group_id: the clamp group to refcount
  * @uc_se: the utilization clamp data for the task
@@ -1000,10 +999,9 @@ static inline void uclamp_group_put(int clamp_id, int group_id)
  * this new clamp value. The corresponding clamp group index will be used by
  * the task to reference count the clamp value on CPUs while enqueued.
  */
-static inline void uclamp_group_get(struct task_struct *p,
-				    int clamp_id, int next_group_id,
-				    struct uclamp_se *uc_se,
-				    unsigned int clamp_value)
+static inline void uclamp_group_get(int clamp_id, int next_group_id,
+				   struct uclamp_se *uc_se,
+				   unsigned int clamp_value)
 {
 	struct uclamp_map *uc_map = &uclamp_maps[clamp_id][0];
 	int prev_group_id = uc_se->group_id;
