@@ -7587,20 +7587,10 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * to have available on this CPU once the task is
 			 * enqueued here.
 			 */
-			spare_cap = capacity - new_util;
+			spare_cap = capacity_orig - new_util;
 
 			if (idle_cpu(i))
 				idle_idx = idle_get_state_idx(cpu_rq(i));
-
-			/*
-			 * Check if little core will use frequency
-			 * higher than truning point.
-			 */
-			if (hmp_cpu_is_slowest(i) &&
-				freq_util(new_util) > cpu_eff_tp)
-				turning = true;
-			else
-				turning = false;
 
 
 			/*
@@ -7642,42 +7632,20 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				 * efficient CPU (i.e. smallest capacity_orig)
 				 */
 				if (idle_cpu(i)) {
-					/*
-					 * if we found an effcient cpu in L cpu,
-					 * it's no need to search B cpu.
-					 */
-					if (capacity_orig > min_target_capacity)
+					if (boosted &&
+					    capacity_orig < target_capacity)
+						continue;
+					if (!boosted &&
+					    capacity_orig > target_capacity)
+						continue;
+					if (capacity_orig == target_capacity &&
+					    sysctl_sched_cstate_aware &&
+					    best_idle_cstate <= idle_idx)
 						continue;
 
-					if (capacity_orig == min_target_capacity
-						&& sysctl_sched_cstate_aware &&
-						best_idle_cstate <= idle_idx)
-						continue;
-
-					/*
-					 * If little core will use frequency
-					 * higher than truning point, store it
-					 * as backup cpu.
-					 */
-					if (turning &&
-						new_util <
-						backup_idle_min_cpu_util) {
-						backup_idle_min_cpu_util =
-							new_util;
-						backup_idle_min_cpu = i;
-						continue;
-					}
-
-					/* find the max spare capacity cpu */
-					if (!turning &&
-						(new_util < min_cpu_util)) {
-						min_target_capacity =
-							capacity_orig;
-						min_cpu_util = new_util;
-						best_idle_cstate = idle_idx;
-						best_idle_cpu = i;
-					}
-
+					target_capacity = capacity_orig;
+					best_idle_cstate = idle_idx;
+					best_idle_cpu = i;
 					continue;
 				}
 				if (best_idle_cpu != -1)
@@ -7695,6 +7663,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				}
 				if (target_cpu != -1)
 					continue;
+
 
 				/*
 				 * Case A.3: Backup ACTIVE CPU
@@ -7757,47 +7726,20 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * consumptions without affecting performance.
 			 */
 			if (idle_cpu(i)) {
-
-				/*
-				 * Favor CPUs with smaller capacity for
-				 * non latency sensitive tasks.
-				 */
-				if (capacity_orig > best_idle_min_cap_orig)
-					continue;
-
 				/*
 				 * Skip CPUs in deeper idle state, but only
 				 * if they are also less energy efficient.
 				 * IOW, prefer a deep IDLE LITTLE CPU vs a
 				 * shallow idle big CPU.
 				 */
-				if (capacity_orig == best_idle_min_cap_orig &&
+				if (capacity_orig == target_capacity &&
 				    sysctl_sched_cstate_aware &&
 				    best_idle_cstate <= idle_idx)
 					continue;
 
-				/*
-				 * If little core will use frequency
-				 * higher than truning point, store it
-				 * as backup cpu.
-				 */
-				if (turning &&
-					new_util < backup_idle_min_cpu_util) {
-					backup_idle_min_cpu_util = new_util;
-					backup_idle_min_cpu = i;
-					backup_idle_min_cpu_cap = capacity_orig;
-					continue;
-				}
-
-				/* find the max spare capacity cpu */
-				if (!turning && (new_util < min_cpu_util)) {
-					best_idle_min_cap_orig =
-						capacity_orig;
-					min_cpu_util = new_util;
-					best_idle_cstate = idle_idx;
-					best_idle_cpu = i;
-				}
-
+				target_capacity = capacity_orig;
+				best_idle_cstate = idle_idx;
+				best_idle_cpu = i;
 				continue;
 			}
 
@@ -7833,25 +7775,10 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			    spare_cap < target_max_spare_cap)
 				continue;
 
-			/*
-			 * If little core will use frequency
-			 * higher than truning point, store it
-			 * as backup cpu.
-			 */
-			if (turning &&
-				new_util < backup_active_min_cpu_util) {
-				backup_active_min_cpu_util =
-				new_util;
-				backup_active_min_cpu = i;
-				continue;
-			}
-
-			if (!turning) {
-				target_max_spare_cap = spare_cap;
-				target_capacity = capacity_orig;
-				target_util = new_util;
-				target_cpu = i;
-			}
+			target_max_spare_cap = spare_cap;
+			target_capacity = capacity_orig;
+			target_util = new_util;
+			target_cpu = i;
 		}
 
 	} while (sg = sg->next, sg != sd->groups);
@@ -7884,24 +7811,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	 *   f) ACTIVE little core and use frequency core higher thane turning
 	 *      point: backup_active_min_cpu
 	 */
-
-	if (prefer_idle) {
-		if (best_idle_cpu == -1)
-			best_idle_cpu = backup_idle_min_cpu;
-	} else {
-		if (best_idle_cpu != -1) {
-			if (target_capacity >= best_idle_min_cap_orig)
-				target_cpu = best_idle_cpu;
-		} else if (target_cpu != -1) {
-			if (target_capacity > backup_idle_min_cpu_cap)
-				target_cpu = backup_idle_min_cpu;
-		} else {
-			if (backup_active_min_cpu != -1)
-				target_cpu = backup_active_min_cpu;
-			if (backup_idle_min_cpu != -1)
-				target_cpu = backup_idle_min_cpu;
-		}
-	}
 
 	if (prefer_idle && (best_idle_cpu != -1)) {
 		trace_sched_find_best_target(p, prefer_idle, min_util, cpu,
