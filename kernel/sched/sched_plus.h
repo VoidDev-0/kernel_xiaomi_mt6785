@@ -122,3 +122,9 @@ static inline int sched_deisolate_cpu_unlocked(int cpu)
 	return 0;
 }
 #endif
+
+enum iso_prio_t {ISO_CUSTOMIZE, ISO_TURBO, ISO_SCHED, ISO_UNSET};
+extern int set_cpu_isolation(enum iso_prio_t prio, struct cpumask *cpumask_ptr);
+extern int unset_cpu_isolation(enum iso_prio_t prio);
+extern struct cpumask cpu_all_masks;
+extern enum iso_prio_t iso_prio;
