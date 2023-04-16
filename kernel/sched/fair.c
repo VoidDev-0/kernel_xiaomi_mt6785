@@ -7504,7 +7504,6 @@ static int start_cpu(struct task_struct *p, bool boosted)
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				   bool boosted, bool prefer_idle)
 {
-	unsigned long best_idle_min_cap_orig = ULONG_MAX;
 	unsigned long min_util = boosted_task_util(p);
 	unsigned long target_capacity = ULONG_MAX;
 	unsigned long min_wake_util = ULONG_MAX;
@@ -7518,8 +7517,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	int best_idle_cpu = -1;
 	int target_cpu = -1;
 	int cpu, i;
-	int backup_idle_min_cpu = -1;
-	int backup_active_min_cpu = -1;
 
 	/*
 	 * In most cases, target_capacity tracks capacity_orig of the most
@@ -7554,7 +7551,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			unsigned long wake_util, new_util;
 			long spare_cap;
 			int idle_idx = INT_MAX;
-			bool turning;
 
 			if (!cpu_online(i) || cpu_isolated(i))
 				continue;
@@ -11917,7 +11913,6 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 {
 	int new_cpu;
 	int cpu = task_cpu(p);
-	int force = 0;
 
 	if (rq->misfit_task_load) {
 		if (rq->curr->state != TASK_RUNNING ||

@@ -2985,7 +2985,7 @@ int fpsgo_base2fbt_is_finished(struct render_info *thr)
 
 static void fbt_set_cap_limit(void)
 {
-	int limit_freq = 0, limit_ret;
+	int limit_freq = 0;
 	int opp;
 	int cluster;
 	struct cpumask cluster_cpus;
