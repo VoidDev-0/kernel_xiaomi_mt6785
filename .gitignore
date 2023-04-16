@@ -124,3 +124,16 @@ all.config
 
 # fetched Android config fragments
 kernel/configs/android-*.cfg
+
+# Personal scripts
+bb.sh
+ups.sh
+rev.sh
+commits.txt
+last_version
+
+# Out dir
+out/
+
+# Kernel Log
+kernel.log
