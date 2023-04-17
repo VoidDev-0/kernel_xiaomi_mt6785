@@ -1764,7 +1764,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		struct task_struct *curr_task = rq->curr;
 
 		if (curr_task &&
-			!task_fits_capacity(curr_task, capacity_of(i)))
+			!task_fits_capacity(curr_task, capacity_of(i), src_rq->cpu))
 			heavy_task += 1;
 	}
 
