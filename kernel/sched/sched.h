@@ -2083,14 +2083,13 @@ static inline unsigned long task_util(struct task_struct *p)
 	return p->se.avg.util_avg;
 }
 
-#endif /* CONFIG_SMP */
-
 #ifdef CONFIG_MEDIATEK_SOLUTION
 extern void update_sched_hint(int sys_util, int sys_cap);
 extern void sched_hint_check(u64 wallclock);
 #else
 #define update_sched_hint(sys_util, sys_cap) {}
 #define sched_hint_check(wallclock) {}
+#endif
 
 /*
  * cpu_util returns the amount of capacity of a CPU that is used by CFS
@@ -2155,11 +2154,8 @@ static inline unsigned long cpu_util_cum(int cpu, int delta)
 	unsigned long capacity = capacity_orig_of(cpu);
 
 #ifdef CONFIG_SCHED_WALT
-	if (!walt_disabled && sysctl_sched_use_walt_cpu_util) {
-		util = cpu_rq(cpu)->cum_window_demand;
-		util = div64_u64(util,
-				 sched_ravg_window >> SCHED_CAPACITY_SHIFT);
-	}
+	if (!walt_disabled && sysctl_sched_use_walt_cpu_util)
+		util = cpu_rq(cpu)->cum_window_demand_scaled;
 #endif
 	delta += util;
 	if (delta < 0)
