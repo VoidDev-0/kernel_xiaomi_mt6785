@@ -111,7 +111,7 @@ int show_cpu_capacity(char *buf, int buf_size)
 			cpu_online(cpu) ? capacity_curr_of(cpu) : 0,
 
 			/* cpu utilization */
-			cpu_online(cpu) ? get_cpu_util(cpu) : 0,
+			cpu_online(cpu) ? cpu_util_freq(cpu, NULL) : 0,
 
 			/* cpu on/off */
 			cpu_online(cpu) ? "on" : "off"
