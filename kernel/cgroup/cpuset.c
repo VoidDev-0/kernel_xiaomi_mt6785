@@ -1768,9 +1768,7 @@ static ssize_t cpuset_write_resmask(struct kernfs_open_file *of,
 	free_trial_cpuset(trialcs);
 
 #ifdef CONFIG_UCLAMP_ASSIST
-	// Uclamp Assist: Only overwrite if current task is booster.
-	if (task_is_booster(current))
-		uclamp_set(of, nbytes, off);
+	uclamp_set(of, nbytes, off);
 #endif
 out_unlock:
 	cpuset_sched_change_end();
@@ -2034,12 +2032,12 @@ static void uclamp_set(struct kernfs_open_file *of,
 	const char *cs_name = cs->css.cgroup->kn->name;
 
 	static struct ucl_param tgts[] = {
-		{"top-app",    	     	"20", "max", 1, 1},  // 20-100%
-		{"foreground", 	     	"10", "80",  1, 0},  // 10-80%
-		{"background", 	     	"0",  "50",  0, 0},  // 0-50%
-		{"system-background", 	"0",  "60",  0, 0},  // 0-60%
-		{"restricted",          "0",  "20",  0, 0},  // 0-20%
-		{"camera-daemon",       "20", "max", 1, 1},  // 20-100%
+		{"top-app",             "35", "100", 0, 1},
+		{"foreground",          "10", "40",  0, 0},
+		{"restricted",          "0",  "40",  0, 0},
+		{"background",          "0",  "40",  0, 0},
+		{"system-background",   "0",  "40",  0, 0},
+		{"camera-daemon",       "35", "100", 0, 1},
 	};
 
 	for (i = 0; i < ARRAY_SIZE(tgts); i++) {
